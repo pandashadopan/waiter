@@ -7,7 +7,7 @@ static_resources:
   listeners:
     - name: frontend
       address:
-        socket_address: { address: 0.0.0.0, port_value: 9091 }
+        socket_address: { address: 0.0.0.0, port_value: 9094 }
       filter_chains:
         - filters:
             - name: envoy.http_connection_manager
@@ -31,7 +31,7 @@ static_resources:
                     - name: local_service
                       domains: ["*"]
                       routes:
-                        - match: { prefix: "/", grpc: {} }
+                        - match: { prefix: "/" }
                           route: { cluster: courier_backend, timeout: { seconds: 60 } }
                 stat_prefix: ingress_http
 
@@ -39,7 +39,7 @@ static_resources:
     - name: courier_backend
       connect_timeout: 5s
       hosts:
-        - socket_address: { address: 127.0.0.1, port_value: 8080 }
+        - socket_address: { address: 127.0.0.1, port_value: 9091 }
       http2_protocol_options: {}
       lb_policy: round_robin
       type: logical_dns

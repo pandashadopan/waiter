@@ -80,7 +80,7 @@
 (defn start-courier-instance
   [waiter-url]
   (let [[host _] (str/split waiter-url #":")
-        h2c-port (Integer/parseInt (retrieve-h2c-port waiter-url))
+        _ (Integer/parseInt (retrieve-h2c-port waiter-url))
         request-headers (basic-grpc-service-parameters)
         {:keys [cookies headers] :as response} (ping-courier-service waiter-url request-headers)
         cookie-header (str/join "; " (map #(str (:name %) "=" (:value %)) cookies))
@@ -105,7 +105,7 @@
       (is (contains? #{"Running" "Starting"} (:status service-state)) (str service-state)))
     (assert-service-on-all-routers waiter-url service-id cookies)
 
-    {:h2c-port h2c-port
+    {:h2c-port 9094
      :host host
      :request-headers request-headers
      :service-id service-id}))
@@ -173,7 +173,7 @@
      (when status#
        (is (= code# (-> status# .getCode str)) assertion-message#)
        (when message-substring#
-         (is (str/includes? (.getDescription status#) message-substring#) assertion-message#)))))
+         (is (str/includes? (str (.getDescription status#)) message-substring#) assertion-message#)))))
 
 (defn- count-items
   [xs x]
@@ -192,7 +192,7 @@
            (when-let [^GrpcClient$RpcResult rpc-result
                       (retrieve-request-state grpc-client request-headers query-correlation-id)]
              (let [^StateReply reply (.result rpc-result)
-                   states (seq (.getStateList reply))]
+                   states (seq (some-> reply .getStateList))]
                (log/info "retrieve-request-state:" query-correlation-id
                          {:cid (some-> reply .getCid) :state (some-> reply .getStateList)})
                (when (some #(= "CLOSE" %) states)
@@ -219,8 +219,8 @@
     (is status assertion-message)
     (assert-grpc-ok-status status assertion-message)
     (is reply assertion-message)
-    (is (= query-correlation-id (.getCid reply)) assertion-message)
-    (let [states (seq (.getStateList reply))]
+    (is (= query-correlation-id (some-> reply .getCid)) assertion-message)
+    (let [states (seq (some-> reply .getStateList))]
       (cond
         (contains? #{::client-cancel ::deadline-exceeded} mode)
         (let [states-middle (set (drop-last 3 (drop 2 states)))]
